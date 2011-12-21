@@ -123,15 +123,15 @@
    (let ((projects (remove-if-not 'listp
                                   (cddar (redmine-download-and-parse "projects.xml")))))
      (mapcar (lambda (project)
-               (flet ((get (key) (aif (assoc key project) (caddr it)))
-                      (attribute (key) (aif (assoc key project) (cadr it))))
+               (flet ((get (key) (redmine-aif (assoc key project) (caddr it)))
+                      (attribute (key) (redmine-aif (assoc key project) (cadr it))))
                  (redmine-project-make
-                  :id (aif (get 'id) (string-to-int it))
+                  :id (redmine-aif (get 'id) (string-to-int it))
                   :name (get 'name)
                   :identifier (get 'identifer)
                   :description (get 'description)
-                  :parent (aif (attribute 'parent)
-                               (aif (assoc 'id it)
+                  :parent (redmine-aif (attribute 'parent)
+                               (redmine-aif (assoc 'id it)
                                     (string-to-int (cdr it))))
                   :created-on (get 'created_on)
                   :updated-on (get 'updated_on))))
@@ -172,7 +172,7 @@
 
 ;; Macros
 
-(defmacro aif (test-form then-form &optional else-form)
+(defmacro redmine-aif (test-form then-form &optional else-form)
   `(let ((it ,test-form))
      (if it ,then-form ,else-form)))
 
