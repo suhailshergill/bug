@@ -133,18 +133,21 @@
 
 (defun redmine-username ()
   "Get the redmine username."
-  (or redmine-username
-      (setq redmine-username (read-from-minibuffer "Username: "))))
+  (if (string= "" redmine-username)
+      (setq redmine-username (read-from-minibuffer "Username: "))
+    redmine-username))
 
 (defun redmine-password ()
   "Get the redmine password."
-  (or redmine-password
-      (setq redmine-password (read-passwd "Password: "))))
+  (if (string= "" redmine-password)
+      (setq redmine-password (read-passwd "Password: "))
+    redmine-password))
 
 (defun redmine-domain ()
   "Get the redmine domain."
-  (or redmine-domain
-      (setq redmine-domain (read-from-minibuffer "Domain: "))))
+  (if (string= "" redmine-domain)
+      (setq redmine-domain (read-from-minibuffer "Domain: "))
+    redmine-domain))
 
 
 ;; Types
