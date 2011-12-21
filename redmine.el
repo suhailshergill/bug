@@ -17,9 +17,15 @@
 
 ;; Functions
 
+(defun redmine ()
+  (interactive)
+  (let ((buffer (get-buffer-create "*redmine*")))
+    (with-current-buffer buffer
+      (unless (eq major-mode 'redmine-mode) (redmine-mode))
+      (switch-to-buffer-other-window buffer))))
+
 (defun redmine-mode ()
   "Review the project list and recently active tickets."
-  (interactive)
   (kill-all-local-variables)
   (buffer-disable-undo)
   (toggle-read-only t)
