@@ -32,11 +32,13 @@
         mode-name "Bug"
         mode-line-process "")
   (use-local-map bug-mode-map)
-  (set (make-local-variable 'bug-username) nil)
-  (set (make-local-variable 'bug-password) nil)
-  (set (make-local-variable 'bug-domain) nil)
-  (set (make-local-variable 'bug-cache) (make-hash-table :test 'equal))
-  (set (make-local-variable 'bug-tracker) (bug-choose-tracker))
+  (set (make-local-variable 'bug-session)
+       (bug-session-make
+        :username nil
+        :password nil
+        :domain nil
+        :cache (make-hash-table :test 'equal)
+        :tracker (bug-choose-tracker)))
   (run-mode-hooks 'bug-mode)
   (bug-update-display))
 
@@ -72,10 +74,11 @@
   (interactive)
   (let ((buffer-read-only nil)) 
     (delete-region (point-min) (point-max))
-    (let ((projects (bug-get-projects)))
+    (let ((session bug-session)
+          (projects (bug-get-projects)))
       (bug-insert-property-list
-       `(("Domain" . ,(bug-domain))
-         ("User" . ,(bug-username))
+       `(("Domain" . ,(bug-session-get-domain session))
+         ("User" . ,(bug-session-get-username session))
          ("Project count" . ,(length projects))))
       (insert "\n")
       (bug-insert-projects-list)
@@ -106,7 +109,8 @@
 
 (defun bug-get-projects ()
   "Get the projects from on the current tracker."
-  (funcall (bug-tracker-get-projects bug-tracker) bug-tracker))
+  (let ((tracker (bug-session-tracker bug-session)))
+    (funcall (bug-tracker-get-projects tracker) tracker)))
 
 (defun bug-insert-projects (projects &optional parent indent)
   "Insert projects tree into the buffer."
@@ -120,20 +124,29 @@
                               parent))
                        projects)))
 
-(defun bug-username ()
-  "Get the bug username."
-  (or bug-username
-      (setq bug-username (read-from-minibuffer "Username: "))))
+(defun bug-session-get-username (session)
+  "Get the username for the session, prompting if necessary."
+  (bug-aif (bug-session-username session)
+           it
+           (let ((it (read-from-minibuffer "Username: ")))
+             (setf (bug-session-username session) it)
+             it)))
 
-(defun bug-password ()
-  "Get the bug password."
-  (or bug-password
-      (setq bug-password (read-passwd "Password: "))))
+(defun bug-session-get-password (session)
+  "Get the password for the session, prompting if necessary."
+  (bug-aif (bug-session-password session)
+           it
+           (let ((it (read-passwd "Password: ")))
+             (setf (bug-session-password session) it)
+             it)))
 
-(defun bug-domain ()
-  "Get the bug domain."
-  (or bug-domain
-      (setq bug-domain (read-from-minibuffer "Domain: "))))
+(defun bug-session-get-domain (session)
+  "Get the domain for the session, prompting if necessary."
+  (bug-aif (bug-session-domain session)
+           it
+           (let ((it (read-from-minibuffer "Domain: ")))
+             (setf (bug-session-domain session) it)
+             it)))
 
 
 ;; Types
@@ -155,6 +168,15 @@
   description
   parent)
 
+(defstruct
+  (bug-session
+   (:constructor bug-session-make))
+  username
+  password
+  domain
+  cache
+  tracker)
+
 
 ;; Macros
 
@@ -164,10 +186,10 @@
 
 (defmacro bug-cache (key generate)
   (let ((value (gensym)))
-    `(let ((,value (gethash ,key bug-cache :nothing)))
+    `(let ((,value (gethash ,key (bug-session-cache bug-session) :nothing)))
        (if (eq ,value :nothing)
            (let ((,value ,generate))
-             (progn (puthash ,key ,value bug-cache)
+             (progn (puthash ,key ,value (bug-session-cache bug-session))
                     ,value))
          ,value))))
 
@@ -176,21 +198,6 @@
 
 (defgroup bug nil
   "Bug customization group.")
-
-(defcustom bug-username ""
-  "Your Bug username."
-  :type 'string
-  :group 'bug)
-
-(defcustom bug-password ""
-  "Your Bug password."
-  :type 'string
-  :group 'bug)
-
-(defcustom bug-domain ""
-  "Your Bug domain."
-  :type 'string
-  :group 'bug)
 
 ;; Faces
 

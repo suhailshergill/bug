@@ -8,11 +8,12 @@
 
 (defun bug-redmine-download-and-parse (path)
   "GET from the `path' of the given bug tracker API."
-  (let ((uri (format "curl -s -S -f 'http://%s:%s@%s/%s' 2>/dev/null"
-                     (bug-username)
-                     (bug-password)
-                     (bug-domain)
-                     path)))
+  (let* ((session bug-session)
+         (uri (format "curl -s -S -f 'http://%s:%s@%s/%s' 2>/dev/null"
+                      (bug-session-get-username session)
+                      (bug-session-get-password session)
+                      (bug-session-get-domain session)
+                      path)))
     (with-temp-buffer
       (shell-command uri (current-buffer))
       (let ((output (buffer-substring-no-properties (point-min) (point-max)))
