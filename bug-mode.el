@@ -2,6 +2,7 @@
 ;; Globals
 
 (defvar bug-trackers '())
+(defvar bug-cache-force-refresh nil)
 
 
 ;; Constants
@@ -11,6 +12,7 @@
     (suppress-keymap map t)
     (define-key map (kbd "TAB") 'bug-toggle)
     (define-key map (kbd "g") 'bug-update-display)
+    (define-key map (kbd "i") 'bug-open-issue)
     map))
 
 
@@ -88,10 +90,23 @@
   "Insert a property list."
   (let ((max-len (reduce 'max (mapcar (lambda (x) (length (car x))) assocs))))
     (mapc (lambda (assoc)
-            (insert (format "%s:  %s%s\n"
-                            (car assoc)
-                            (make-string (- max-len (length (car assoc))) ? )
-                            (cdr assoc))))
+            (insert (propertize
+                     (format "%s:  %s"
+                             (car assoc)
+                             (make-string (- max-len (length (car assoc))) ? ))
+                     'face 'bug-key-title))
+            (let* ((start (point))
+                   (column (- start (line-beginning-position))))
+              (insert (format "%s" (cdr assoc)))
+              (fill-region start (point))
+              (let ((max (point)))
+                (save-excursion
+                  (goto-char start)
+                  (while (search-forward "\n" nil t 1)
+                    (replace-match (concat "\n" (make-string (+ 3 max-len) ? ))
+                                   t
+                                   t)))))
+            (insert "\n"))
           assocs)))
 
 (defun bug-insert-projects-list ()
@@ -148,6 +163,13 @@
              (setf (bug-session-domain session) it)
              it)))
 
+(defun bug-open-issue ()
+  "Open an issue."
+  (interactive)
+  (bug-issue bug-session
+             (string-to-int (replace-regexp-in-string
+                             "[^0-9]" "" (read-from-minibuffer "Issue #: ")))))
+
 
 ;; Types
 
@@ -155,7 +177,7 @@
   (bug-tracker
    (:constructor bug-tracker-make))
   get-projects
-  get-recent-tickets
+  get-issue
   internal-state
   title)
 
@@ -186,10 +208,11 @@
 
 (defmacro bug-cache (key generate)
   (let ((value (gensym)))
-    `(let ((,value (gethash ,key (bug-session-cache bug-session) :nothing)))
-       (if (eq ,value :nothing)
+    `(let* ((key ,key)
+            (,value (gethash key (bug-session-cache bug-session) :nothing)))
+       (if (or bug-cache-force-refresh (eq ,value :nothing))
            (let ((,value ,generate))
-             (progn (puthash ,key ,value (bug-session-cache bug-session))
+             (progn (puthash key ,value (bug-session-cache bug-session))
                     ,value))
          ,value))))
 
@@ -205,6 +228,11 @@
   "Bug faces customization group.")
 
 (defface bug-section-title
+  '((t :inherit header-line))
+  "Face for section titles."
+  :group 'bug-faces)
+
+(defface bug-key-title
   '((t :inherit header-line))
   "Face for section titles."
   :group 'bug-faces)
